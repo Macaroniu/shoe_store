@@ -7,9 +7,9 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY ./source/requirements/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r ./requirements.txt
 
-COPY ./src ./src
+COPY ./source/src ./src
 
 CMD ["uvicorn", "src.entrypoints.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

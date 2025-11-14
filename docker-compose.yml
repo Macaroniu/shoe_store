@@ -27,7 +27,7 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/shoe_shop
       SECRET_KEY: your-secret-key-change-in-production
     volumes:
-      - ./src:/app/src
+      - ./source/src:/app/src
       - ./static:/app/static
     depends_on:
       db:
@@ -38,6 +38,16 @@ services:
         python -m src.db.init_db &&
         uvicorn src.entrypoints.main:app --host 0.0.0.0 --port 8000 --reload
       "
+
+  frontend:
+    image: nginx:alpine
+    container_name: shoe_shop_frontend
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - api
 
 volumes:
   postgres_data:
