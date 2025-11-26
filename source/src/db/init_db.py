@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from src.db.database import engine, SessionLocal
-from src.db.models import Base, User, Product, Order, PickupPoint, order_product
+from src.db.models.models import Base, User, Product, Order, PickupPoint, order_product
 from src.utils.security import get_password_hash
 
 

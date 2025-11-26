@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from src.db.database import get_db
-from src.db.models import Product as ProductModel, User
+from src.db.models.models import Product as ProductModel, User
 from src.schemas.product import Product, ProductCreate, ProductUpdate, ProductWithFinalPrice
-from src.api.dependencies import get_current_user, require_admin
-from src.utils.image_handler import save_product_image, delete_product_image, get_image_path
+from src.api.utils import get_current_user, require_admin
+from src.utils.images import save_product_image, delete_product_image, get_image_path
 
 router = APIRouter(prefix="/api/products", tags=["products"])
 
@@ -149,7 +149,7 @@ async def delete_product(
         current_user: User = Depends(require_admin),
         db: Session = Depends(get_db)
 ):
-    from src.db.models import order_product
+    from db.models.models import order_product
 
     product = db.query(ProductModel).filter(ProductModel.article == article).first()
     if not product:

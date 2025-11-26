@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 from datetime import date
 
 from src.db.database import get_db
-from src.db.models import Order as OrderModel, Product as ProductModel, PickupPoint, User, order_product
+from src.db.models.models import Order as OrderModel, Product as ProductModel, PickupPoint, User, order_product
 from src.schemas.order import Order, OrderCreate, OrderUpdate, PickupPoint as PickupPointSchema
-from src.api.dependencies import require_manager_or_admin, require_admin
+from src.api.utils import require_manager_or_admin, require_admin
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 

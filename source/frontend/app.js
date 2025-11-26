@@ -29,9 +29,7 @@ function checkAuth() {
 
 function setupEventListeners() {
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
-
     document.getElementById('productForm').addEventListener('submit', handleProductSubmit);
-
     document.getElementById('orderForm').addEventListener('submit', handleOrderSubmit);
 }
 
@@ -98,8 +96,9 @@ function showScreen(screenId) {
 
 async function showProductsScreen() {
     showScreen('productsScreen');
-    updateUserInfo('userInfo');
+    updateSidebarUserInfo();
     setupControlPanel();
+    updateNavigation();
     await loadProducts();
 }
 
@@ -110,7 +109,8 @@ async function showOrdersScreen() {
     }
 
     showScreen('ordersScreen');
-    updateUserInfo('userInfoOrders');
+    updateSidebarUserInfoOrders();
+    updateNavigationOrders();
 
     if (isAdmin()) {
         document.getElementById('ordersAdminActions').style.display = 'flex';
@@ -119,16 +119,35 @@ async function showOrdersScreen() {
     await loadOrders();
 }
 
-function updateUserInfo(elementId) {
-    const userInfoEl = document.getElementById(elementId);
+function updateSidebarUserInfo() {
     if (currentUser) {
-        userInfoEl.textContent = currentUser.full_name;
+        document.getElementById('sidebarUserName').textContent = currentUser.full_name;
+        document.getElementById('sidebarUserRole').textContent = currentUser.role;
     }
+}
+
+function updateSidebarUserInfoOrders() {
+    if (currentUser) {
+        document.getElementById('sidebarUserNameOrders').textContent = currentUser.full_name;
+        document.getElementById('sidebarUserRoleOrders').textContent = currentUser.role;
+    }
+}
+
+function updateNavigation() {
+    const ordersNavItem = document.getElementById('ordersNavItem');
+    if (canViewOrders()) {
+        ordersNavItem.style.display = 'flex';
+    } else {
+        ordersNavItem.style.display = 'none';
+    }
+}
+
+function updateNavigationOrders() {
 }
 
 function setupControlPanel() {
     const controlPanel = document.getElementById('controlPanel');
-    const adminActions = document.getElementById('adminActions');
+    const adminHeaderActions = document.getElementById('adminHeaderActions');
 
     if (canFilterProducts()) {
         controlPanel.style.display = 'block';
@@ -138,9 +157,9 @@ function setupControlPanel() {
     }
 
     if (isAdmin()) {
-        adminActions.style.display = 'flex';
+        adminHeaderActions.style.display = 'flex';
     } else {
-        adminActions.style.display = 'none';
+        adminHeaderActions.style.display = 'none';
     }
 }
 
@@ -162,7 +181,7 @@ function canViewOrders() {
 
 async function loadProducts() {
     const gridEl = document.getElementById('productsGrid');
-    gridEl.innerHTML = '<div class="loading">Загрузка товаров...</div>';
+    gridEl.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Загрузка товаров...</p></div>';
 
     try {
         let url = `${API_BASE_URL}/api/products`;
@@ -197,7 +216,7 @@ async function loadProducts() {
         renderProducts();
 
     } catch (error) {
-        gridEl.innerHTML = `<div class="loading">Ошибка: ${error.message}</div>`;
+        gridEl.innerHTML = `<div class="loading-state"><p>Ошибка: ${error.message}</p></div>`;
     }
 }
 
@@ -205,7 +224,7 @@ function renderProducts() {
     const gridEl = document.getElementById('productsGrid');
 
     if (allProducts.length === 0) {
-        gridEl.innerHTML = '<div class="loading">Товары не найдены</div>';
+        gridEl.innerHTML = '<div class="loading-state"><p>Товары не найдены</p></div>';
         return;
     }
 
@@ -229,40 +248,39 @@ function createProductCard(product) {
     }
 
     const hasDiscount = product.discount > 0;
-    const imageUrl = product.photo || `${API_BASE_URL}/static/images/picture.png`;
+    const imageUrl = product.photo.startsWith('http') ? product.photo : `${API_BASE_URL}${product.photo}`;
 
     card.innerHTML = `
-        <img src="${imageUrl}" alt="${product.name}" class="product-image" onerror="this.src='${API_BASE_URL}/static/images/picture.png'">
+        <div class="product-image-container">
+            <img src="${imageUrl}" alt="${product.name}" class="product-image" onerror="this.src='${API_BASE_URL}/static/images/picture.png'">
+            ${hasDiscount ? `<div class="discount-badge">-${product.discount}%</div>` : ''}
+        </div>
         <div class="product-info">
             <h3>${product.name}</h3>
-            <p><strong>Артикул:</strong> ${product.article}</p>
-            <p><strong>Категория:</strong> ${product.category}</p>
-            <p><strong>Производитель:</strong> ${product.manufacturer}</p>
-            <p><strong>Поставщик:</strong> ${product.supplier}</p>
-            <p><strong>Количество:</strong> ${product.quantity} ${product.unit}</p>
-            ${product.description ? `<p><strong>Описание:</strong> ${product.description}</p>` : ''}
+            <p><strong>📦</strong> ${product.article}</p>
+            <p><strong>🏷️</strong> ${product.category}</p>
+            <p><strong>🏭</strong> ${product.manufacturer}</p>
+            <p><strong>🚚</strong> ${product.supplier}</p>
+            <p><strong>📊</strong> ${product.quantity} ${product.unit}</p>
+            ${product.description ? `<p style="margin-top: 10px; color: #666;">${product.description}</p>` : ''}
 
             <div class="product-price">
                 ${hasDiscount ? `<span class="original-price">${product.price.toFixed(2)} ₽</span>` : ''}
                 <span class="final-price">${product.final_price.toFixed(2)} ₽</span>
-                ${hasDiscount ? `<span class="discount-badge">-${product.discount}%</span>` : ''}
             </div>
-
-            ${isAdmin() ? `
-                <div class="product-actions">
-                    <button class="btn btn-primary btn-sm" onclick="editProduct('${product.article}')">Редактировать</button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteProduct('${product.article}')">Удалить</button>
-                </div>
-            ` : ''}
         </div>
+        ${isAdmin() ? `
+            <div class="product-actions">
+                <button class="btn btn-accent btn-sm" onclick="editProduct('${product.article}')">✏️ Редактировать</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteProduct('${product.article}')">🗑️ Удалить</button>
+            </div>
+        ` : ''}
     `;
 
     return card;
 }
 
 async function loadSuppliers() {
-    if (!canFilterProducts()) return;
-
     try {
         const response = await fetch(`${API_BASE_URL}/api/products/suppliers`, {
             headers: {
@@ -284,7 +302,7 @@ function applyFilters() {
     loadProducts();
 }
 
-function showAddProductModal() {
+async function showAddProductModal() {
     editingProduct = null;
     document.getElementById('productModalTitle').textContent = 'Добавить товар';
     document.getElementById('productForm').reset();
@@ -292,7 +310,7 @@ function showAddProductModal() {
     document.getElementById('productModal').classList.add('active');
 }
 
-function editProduct(article) {
+async function editProduct(article) {
     editingProduct = allProducts.find(p => p.article === article);
     if (!editingProduct) return;
 
@@ -325,23 +343,22 @@ async function handleProductSubmit(e) {
     const errorEl = document.getElementById('productError');
     errorEl.classList.remove('active');
 
-    const article = document.getElementById('article').value;
     const productData = {
-        article: article,
+        article: document.getElementById('article').value,
         name: document.getElementById('name').value,
         category: document.getElementById('category').value,
         manufacturer: document.getElementById('manufacturer').value,
         supplier: document.getElementById('supplier').value,
         unit: document.getElementById('unit').value,
         price: parseFloat(document.getElementById('price').value),
-        discount: parseInt(document.getElementById('discount').value),
+        discount: parseInt(document.getElementById('discount').value) || 0,
         quantity: parseInt(document.getElementById('quantity').value),
-        description: document.getElementById('description').value
+        description: document.getElementById('description').value || null
     };
 
     try {
         const url = editingProduct
-            ? `${API_BASE_URL}/api/products/${article}`
+            ? `${API_BASE_URL}/api/products/${editingProduct.article}`
             : `${API_BASE_URL}/api/products`;
 
         const method = editingProduct ? 'PUT' : 'POST';
@@ -360,9 +377,11 @@ async function handleProductSubmit(e) {
             throw new Error(error.detail || 'Ошибка сохранения товара');
         }
 
-        const photoInput = document.getElementById('photo');
-        if (photoInput.files.length > 0) {
-            await uploadProductImage(article, photoInput.files[0]);
+        const savedProduct = await response.json();
+
+        const photoFile = document.getElementById('photo').files[0];
+        if (photoFile) {
+            await uploadProductImage(savedProduct.article, photoFile);
         }
 
         closeProductModal();
@@ -392,7 +411,7 @@ async function uploadProductImage(article, file) {
 }
 
 async function deleteProduct(article) {
-    if (!confirm(`Вы уверены, что хотите удалить товар ${article}?`)) {
+    if (!confirm('Вы уверены, что хотите удалить этот товар?')) {
         return;
     }
 
@@ -418,7 +437,7 @@ async function deleteProduct(article) {
 
 async function loadOrders() {
     const listEl = document.getElementById('ordersList');
-    listEl.innerHTML = '<div class="loading">Загрузка заказов...</div>';
+    listEl.innerHTML = '<div class="loading-state"><div class="spinner"></div><p>Загрузка заказов...</p></div>';
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/orders`, {
@@ -435,7 +454,7 @@ async function loadOrders() {
         renderOrders();
 
     } catch (error) {
-        listEl.innerHTML = `<div class="loading">Ошибка: ${error.message}</div>`;
+        listEl.innerHTML = `<div class="loading-state"><p>Ошибка: ${error.message}</p></div>`;
     }
 }
 
@@ -443,7 +462,7 @@ function renderOrders() {
     const listEl = document.getElementById('ordersList');
 
     if (allOrders.length === 0) {
-        listEl.innerHTML = '<div class="loading">Заказы не найдены</div>';
+        listEl.innerHTML = '<div class="loading-state"><p>Заказы не найдены</p></div>';
         return;
     }
 
@@ -463,35 +482,35 @@ function createOrderCard(order) {
 
     card.innerHTML = `
         <div class="order-header">
-            <span class="order-number">Заказ ${order.order_number}</span>
+            <span class="order-number">Заказ № ${order.order_number}</span>
             <span class="order-status ${statusClass}">${order.status}</span>
         </div>
         <div class="order-info">
             <div class="order-info-item">
-                <label>Дата заказа:</label>
-                <span>${formatDate(order.order_date)}</span>
+                <label>Дата заказа</label>
+                <span>📅 ${formatDate(order.order_date)}</span>
             </div>
             <div class="order-info-item">
-                <label>Дата выдачи:</label>
-                <span>${formatDate(order.delivery_date)}</span>
+                <label>Дата выдачи</label>
+                <span>📅 ${formatDate(order.delivery_date)}</span>
             </div>
             <div class="order-info-item">
-                <label>Клиент:</label>
-                <span>${order.client_full_name}</span>
+                <label>Клиент</label>
+                <span>👤 ${order.client_full_name}</span>
             </div>
             <div class="order-info-item">
-                <label>Код получения:</label>
-                <span>${order.code}</span>
+                <label>Код получения</label>
+                <span>🔑 ${order.code}</span>
             </div>
             <div class="order-info-item">
-                <label>Пункт выдачи:</label>
-                <span>${order.pickup_address || 'Не указан'}</span>
+                <label>Пункт выдачи</label>
+                <span>📍 ${order.pickup_address || 'Не указан'}</span>
             </div>
         </div>
         ${isAdmin() ? `
             <div class="order-actions">
-                <button class="btn btn-primary btn-sm" onclick="editOrder(${order.id})">Редактировать</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteOrder(${order.id})">Удалить</button>
+                <button class="btn btn-accent btn-sm" onclick="editOrder(${order.id})">✏️ Редактировать</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteOrder(${order.id})">🗑️ Удалить</button>
             </div>
         ` : ''}
     `;
@@ -507,7 +526,7 @@ async function showAddOrderModal() {
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('orderDate').value = today;
 
-    document.getElementById('orderProducts').innerHTML = '<button type="button" class="btn btn-secondary btn-sm" onclick="addProductToOrder()">+ Добавить товар</button>';
+    document.getElementById('orderProducts').innerHTML = '<button type="button" class="btn btn-ghost btn-sm" onclick="addProductToOrder()">+ Добавить товар</button>';
 
     await loadPickupPoints();
     document.getElementById('orderModal').classList.add('active');

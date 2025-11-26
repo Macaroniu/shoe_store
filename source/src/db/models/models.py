@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date, Table
 from sqlalchemy.orm import relationship
-from .database import Base
+from src.db.database import Base
 
 order_product = Table(
     'order_product',
