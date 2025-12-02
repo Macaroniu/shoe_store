@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, and_  # <--- Добавлен импорт and_
 
 from src.db.database import get_db
 from src.db.models.models import Product as ProductModel, User
@@ -38,15 +38,27 @@ async def get_products(
 
     if can_filter:
         if search:
-            search_filter = or_(
-                ProductModel.article.ilike(f"%{search}%"),
-                ProductModel.name.ilike(f"%{search}%"),
-                ProductModel.supplier.ilike(f"%{search}%"),
-                ProductModel.manufacturer.ilike(f"%{search}%"),
-                ProductModel.category.ilike(f"%{search}%"),
-                ProductModel.description.ilike(f"%{search}%")
-            )
-            query = query.filter(search_filter)
+            # Разбиваем поисковый запрос на отдельные слова
+            search_terms = search.split()
+
+            # Список условий, которые должны выполняться одновременно (AND)
+            and_conditions = []
+
+            for term in search_terms:
+                # Каждое слово ищем во всех полях (OR внутри слова)
+                term_filter = or_(
+                    ProductModel.article.ilike(f"%{term}%"),
+                    ProductModel.name.ilike(f"%{term}%"),
+                    ProductModel.supplier.ilike(f"%{term}%"),
+                    ProductModel.manufacturer.ilike(f"%{term}%"),
+                    ProductModel.category.ilike(f"%{term}%"),
+                    ProductModel.description.ilike(f"%{term}%")
+                )
+                and_conditions.append(term_filter)
+
+            # Применяем все условия сразу через and_
+            if and_conditions:
+                query = query.filter(and_(*and_conditions))
 
         if supplier and supplier != "Все поставщики":
             query = query.filter(ProductModel.supplier == supplier)
@@ -149,7 +161,7 @@ async def delete_product(
         current_user: User = Depends(require_admin),
         db: Session = Depends(get_db)
 ):
-    from db.models.models import order_product
+    from src.db.models.models import order_product
 
     product = db.query(ProductModel).filter(ProductModel.article == article).first()
     if not product:

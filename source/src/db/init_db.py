@@ -63,74 +63,27 @@ def load_pickup_points(db: Session):
 
 
 def load_products(db: Session):
+    """
+    Загрузка примеров товаров
+    ВАЖНО: Добавьте здесь товары, если хотите чтобы они были в БД
+    """
     print("Загрузка товаров...")
 
+    # Пример товаров - раскомментируйте и дополните при необходимости
     products_data = [
-        {
-            "article": "A11214",
-            "name": "Ботинки",
-            "unit": "шт.",
-            "price": 4990,
-            "supplier": "Karl",
-            "manufacturer": "Karl",
-            "category": "Женская обувь",
-            "discount": 3,
-            "quantity": 6,
-            "description": "Женские ботинки демисезонные karl",
-            "photo": None
-        },
-        {
-            "article": "F6358R4",
-            "name": "Ботинки",
-            "unit": "шт.",
-            "price": 3244,
-            "supplier": "Обувь для вас",
-            "manufacturer": "Marco Tozzi",
-            "category": "Женская обувь",
-            "discount": 2,
-            "quantity": 13,
-            "description": "Ботинки Marco Tozzi женские демисезонные, размер 39, цвет бежевый",
-            "photo": None
-        },
-        {
-            "article": "H78215",
-            "name": "Туфли",
-            "unit": "шт.",
-            "price": 4499,
-            "supplier": "Karl",
-            "manufacturer": "Karl",
-            "category": "Мужская обувь",
-            "discount": 4,
-            "quantity": 5,
-            "description": "Туфли karl мужские классика MYZ21AW-450A, размер 43, цвет: черный",
-            "photo": None
-        },
-        {
-            "article": "G78315",
-            "name": "Ботинки",
-            "unit": "шт.",
-            "price": 5900,
-            "supplier": "Karl",
-            "manufacturer": "Рос",
-            "category": "Мужская обувь",
-            "discount": 2,
-            "quantity": 8,
-            "description": "Мужские ботинки Рос-Обувь кожаные с натуральным мехом",
-            "photo": None
-        },
-        {
-            "article": "J38416",
-            "name": "Ботинки",
-            "unit": "шт.",
-            "price": 3800,
-            "supplier": "Обувь для вас",
-            "manufacturer": "Rieker",
-            "category": "Мужская обувь",
-            "discount": 2,
-            "quantity": 16,
-            "description": "B3430/14 Полуботинки мужские Rieker",
-            "photo": None
-        },
+        # {
+        #     "article": "A11214",
+        #     "name": "Кроссовки Nike Air Max",
+        #     "unit": "шт.",
+        #     "price": 5999.00,
+        #     "supplier": "ООО Поставка",
+        #     "manufacturer": "Nike",
+        #     "category": "Женская обувь",
+        #     "discount": 10,
+        #     "quantity": 15,
+        #     "description": "Женские кроссовки Nike Air Max для активного отдыха"
+        # },
+        # Добавьте другие товары здесь...
     ]
 
     count = 0
@@ -145,55 +98,6 @@ def load_products(db: Session):
     print(f"Загружено товаров: {count}")
 
 
-def load_orders(db: Session):
-    print("Загрузка заказов...")
-
-    orders_data = [
-        {
-            "order_number": "270225-1",
-            "order_date": datetime(2025, 2, 27).date(),
-            "delivery_date": datetime(2025, 4, 20).date(),
-            "pickup_point_id": 1,
-            "client_full_name": "Степанов Михаил Артёмович",
-            "code": 901,
-            "status": "Завершен",
-            "products": ["A11214", "F6358R4"]
-        },
-        {
-            "order_number": "280925-1",
-            "order_date": datetime(2025, 9, 28).date(),
-            "delivery_date": datetime(2025, 4, 21).date(),
-            "pickup_point_id": 2,
-            "client_full_name": "Никифорова Всесвяя Николаевна",
-            "code": 902,
-            "status": "Завершен",
-            "products": ["H78215", "G78315"]
-        },
-    ]
-
-    count = 0
-    for order_data in orders_data:
-        existing = db.query(Order).filter(Order.order_number == order_data["order_number"]).first()
-        if not existing:
-            products = order_data.pop("products")
-            order = Order(**order_data)
-            db.add(order)
-            db.flush()
-
-            for product_id in products:
-                stmt = order_product.insert().values(
-                    order_id=order.id,
-                    product_id=product_id,
-                    quantity=1
-                )
-                db.execute(stmt)
-
-            count += 1
-
-    db.commit()
-    print(f"Загружено заказов: {count}")
-
-
 def init_database():
     print("Начало инициализации базы данных...")
 
@@ -204,13 +108,17 @@ def init_database():
         load_pickup_points(db)
         load_users(db)
         load_products(db)
-        load_orders(db)
+
+        # ЗАКАЗЫ НЕ СОЗДАЕМ - они будут импортированы из Excel
+        # через import_data.py
 
         print("База данных успешно инициализирована!")
         print("\nТестовые учетные записи:")
         print("  Администратор: login=admin, password=admin")
         print("  Менеджер: login=manager, password=manager")
         print("  Клиент: login=client, password=client")
+        print("\n⚠️  ВАЖНО: Для импорта данных из Excel запустите:")
+        print("  python3 import_data.py")
 
     except Exception as e:
         print(f"Ошибка при инициализации: {e}")

@@ -98,51 +98,45 @@ async function showProductsScreen() {
     showScreen('productsScreen');
     updateSidebarUserInfo();
     setupControlPanel();
-    updateNavigation();
     await loadProducts();
 }
 
 async function showOrdersScreen() {
     if (!canViewOrders()) {
-        alert('У вас нет прав для просмотра заказов');
+        alert('У вас нет доступа к просмотру заказов');
         return;
     }
 
     showScreen('ordersScreen');
-    updateSidebarUserInfoOrders();
-    updateNavigationOrders();
-
-    if (isAdmin()) {
-        document.getElementById('ordersAdminActions').style.display = 'flex';
-    }
-
+    updateSidebarUserInfo('orders');
+    setupOrdersScreen();
     await loadOrders();
 }
 
-function updateSidebarUserInfo() {
-    if (currentUser) {
-        document.getElementById('sidebarUserName').textContent = currentUser.full_name;
-        document.getElementById('sidebarUserRole').textContent = currentUser.role;
-    }
-}
+function updateSidebarUserInfo(screen = 'products') {
+    const nameEl = document.getElementById(screen === 'orders' ? 'headerUserNameOrders' : 'headerUserName');
+    const roleEl = document.getElementById(screen === 'orders' ? 'headerUserRoleOrders' : 'headerUserRole');
 
-function updateSidebarUserInfoOrders() {
-    if (currentUser) {
-        document.getElementById('sidebarUserNameOrders').textContent = currentUser.full_name;
-        document.getElementById('sidebarUserRoleOrders').textContent = currentUser.role;
-    }
-}
+    nameEl.textContent = currentUser.full_name;
+    roleEl.textContent = currentUser.role;
 
-function updateNavigation() {
-    const ordersNavItem = document.getElementById('ordersNavItem');
+    document.querySelectorAll('.nav-link').forEach(item => {
+        item.classList.remove('active');
+    });
+
     if (canViewOrders()) {
-        ordersNavItem.style.display = 'flex';
-    } else {
-        ordersNavItem.style.display = 'none';
+        document.getElementById('ordersNavLink').style.display = 'inline-flex';
     }
 }
 
-function updateNavigationOrders() {
+function setupOrdersScreen() {
+    const ordersAdminActions = document.getElementById('ordersAdminActions');
+
+    if (isAdmin()) {
+        ordersAdminActions.style.display = 'flex';
+    } else {
+        ordersAdminActions.style.display = 'none';
+    }
 }
 
 function setupControlPanel() {
@@ -212,12 +206,51 @@ async function loadProducts() {
             throw new Error('Ошибка загрузки товаров');
         }
 
-        allProducts = await response.json();
+        const products = await response.json();
+
+        // Применяем клиентскую фильтрацию для многопараметрового поиска
+        if (canFilterProducts()) {
+            allProducts = filterProductsLocally(products);
+        } else {
+            allProducts = products;
+        }
+
         renderProducts();
 
     } catch (error) {
         gridEl.innerHTML = `<div class="loading-state"><p>Ошибка: ${error.message}</p></div>`;
     }
+}
+
+/**
+ * Функция для многопараметровой фильтрации товаров на клиенте
+ * Позволяет искать одновременно по нескольким параметрам
+ */
+function filterProductsLocally(products) {
+    const searchInput = document.getElementById('searchInput').value.trim().toLowerCase();
+
+    if (!searchInput) {
+        return products;
+    }
+
+    // Разбиваем поисковый запрос на отдельные слова/фразы
+    const searchTerms = searchInput.split(/\s+/).filter(term => term.length > 0);
+
+    return products.filter(product => {
+        // Создаем строку для поиска из всех полей товара
+        const searchableText = [
+            product.article,
+            product.name,
+            product.category,
+            product.manufacturer,
+            product.supplier,
+            product.description || ''
+        ].join(' ').toLowerCase();
+
+        // Проверяем, что ВСЕ поисковые термины присутствуют в товаре
+        // Это позволяет искать по нескольким параметрам одновременно
+        return searchTerms.every(term => searchableText.includes(term));
+    });
 }
 
 function renderProducts() {
@@ -240,42 +273,90 @@ function createProductCard(product) {
     const card = document.createElement('div');
     card.className = 'product-card';
 
+    // Добавляем класс для большой скидки
     if (product.discount > 15) {
         card.classList.add('high-discount');
     }
-    if (product.out_of_stock) {
-        card.classList.add('out-of-stock');
-    }
 
     const hasDiscount = product.discount > 0;
-    const imageUrl = product.photo.startsWith('http') ? product.photo : `${API_BASE_URL}${product.photo}`;
+
+    // Определяем статус наличия
+    let stockStatus = 'in-stock';
+    let stockText = `В наличии: ${product.quantity} ${product.unit}`;
+    if (product.quantity === 0) {
+        stockStatus = 'out-of-stock';
+        stockText = 'Нет в наличии';
+    } else if (product.quantity < 10) {
+        stockStatus = 'low-stock';
+        stockText = `Мало: ${product.quantity} ${product.unit}`;
+    }
+
+    // Формируем изображение
+    let imageHtml = '';
+    if (product.photo && product.photo.trim() !== '') {
+        // Backend возвращает путь /images/filename.jpg (не /static/images/)
+        const imageUrl = product.photo.startsWith('http')
+            ? product.photo
+            : `http://localhost:8000${product.photo}`;
+        imageHtml = `<img src="${imageUrl}" alt="${product.name}" class="product-image" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="product-placeholder" style="display: none;">📦</div>`;
+    } else {
+        imageHtml = `<div class="product-placeholder">📦</div>`;
+    }
 
     card.innerHTML = `
         <div class="product-image-container">
-            <img src="${imageUrl}" alt="${product.name}" class="product-image" onerror="this.src='${API_BASE_URL}/static/images/picture.png'">
-            ${hasDiscount ? `<div class="discount-badge">-${product.discount}%</div>` : ''}
+            ${imageHtml}
         </div>
-        <div class="product-info">
-            <h3>${product.name}</h3>
-            <p><strong>📦</strong> ${product.article}</p>
-            <p><strong>🏷️</strong> ${product.category}</p>
-            <p><strong>🏭</strong> ${product.manufacturer}</p>
-            <p><strong>🚚</strong> ${product.supplier}</p>
-            <p><strong>📊</strong> ${product.quantity} ${product.unit}</p>
-            ${product.description ? `<p style="margin-top: 10px; color: #666;">${product.description}</p>` : ''}
-
-            <div class="product-price">
-                ${hasDiscount ? `<span class="original-price">${product.price.toFixed(2)} ₽</span>` : ''}
-                <span class="final-price">${product.final_price.toFixed(2)} ₽</span>
+        <div class="product-body">
+            <div class="product-header">
+                <span class="product-article">Арт. ${product.article}</span>
+                ${hasDiscount ? `<span class="discount-badge">-${product.discount}%</span>` : ''}
+            </div>
+            <h3 class="product-name">${product.name}</h3>
+            ${product.description ? `<p class="product-description">${product.description}</p>` : ''}
+            <div class="product-info">
+                <div class="product-info-row">
+                    <span class="product-info-label">Категория:</span>
+                    <span class="product-info-value">${product.category}</span>
+                </div>
+                <div class="product-info-row">
+                    <span class="product-info-label">Производитель:</span>
+                    <span class="product-info-value">${product.manufacturer}</span>
+                </div>
+                <div class="product-info-row">
+                    <span class="product-info-label">Поставщик:</span>
+                    <span class="product-info-value">${product.supplier}</span>
+                </div>
+            </div>
+            <div class="product-price-section">
+                <div class="price-info">
+                    ${hasDiscount ? `<span class="original-price">${product.price.toFixed(2)} ₽</span>` : ''}
+                    <span class="final-price">${product.final_price.toFixed(2)} ₽</span>
+                </div>
+                <div class="stock-info ${stockStatus}">${stockText}</div>
             </div>
         </div>
-        ${isAdmin() ? `
-            <div class="product-actions">
-                <button class="btn btn-accent btn-sm" onclick="editProduct('${product.article}')">✏️ Редактировать</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteProduct('${product.article}')">🗑️ Удалить</button>
-            </div>
-        ` : ''}
     `;
+
+    // Добавляем обработчик клика по карточке для администраторов
+    if (isAdmin()) {
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', (e) => {
+            // Проверяем, что клик не был по кнопке удаления
+            if (!e.target.closest('.btn-danger')) {
+                editProduct(product.article);
+            }
+        });
+
+        // Добавляем кнопку удаления
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'product-actions';
+        actionsDiv.innerHTML = `
+            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteProduct('${product.article}')">🗑️ Удалить</button>
+        `;
+        card.appendChild(actionsDiv);
+    }
 
     return card;
 }
@@ -291,7 +372,8 @@ async function loadSuppliers() {
         if (response.ok) {
             suppliers = await response.json();
             const selectEl = document.getElementById('supplierFilter');
-            selectEl.innerHTML = suppliers.map(s => `<option value="${s}">${s}</option>`).join('');
+            selectEl.innerHTML = '<option value="">Все поставщики</option>' +
+                suppliers.map(s => `<option value="${s}">${s}</option>`).join('');
         }
     } catch (error) {
         console.error('Ошибка загрузки поставщиков:', error);
@@ -507,13 +589,24 @@ function createOrderCard(order) {
                 <span>📍 ${order.pickup_address || 'Не указан'}</span>
             </div>
         </div>
-        ${isAdmin() ? `
-            <div class="order-actions">
-                <button class="btn btn-accent btn-sm" onclick="editOrder(${order.id})">✏️ Редактировать</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteOrder(${order.id})">🗑️ Удалить</button>
-            </div>
-        ` : ''}
     `;
+
+    // Добавляем обработчик клика для администраторов
+    if (isAdmin()) {
+        card.style.cursor = 'pointer';
+        card.addEventListener('click', (e) => {
+            if (!e.target.closest('.btn-danger')) {
+                editOrder(order.id);
+            }
+        });
+
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'order-actions';
+        actionsDiv.innerHTML = `
+            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); deleteOrder(${order.id})">🗑️ Удалить</button>
+        `;
+        card.appendChild(actionsDiv);
+    }
 
     return card;
 }
