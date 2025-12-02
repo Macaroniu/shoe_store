@@ -1,5 +1,9 @@
 # Запуск
 
+## Установка зависимостей
+```bash
+pip install -r source/requirements/requirements.txt
+```
 
 ## Пуллим Python
 
@@ -24,3 +28,5 @@ docker-compose up
 ```bash
 open source/frontend/index.html
 ```
+
+# Все победка
