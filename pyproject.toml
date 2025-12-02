@@ -1,0 +1,19 @@
+[tool.black]
+line-length = 120
+target-version = ['py313']
+workers = 4
+
+[tool.isort]
+line_length = 120
+profile = "black"
+src_paths = ["source"]
+
+[tool.mypy]
+python_version = "3.13"
+ignore_missing_imports = true
+explicit_package_bases = true
+check_untyped_defs = true
+
+[tool.flake8]
+ignore = ["E203", "W503", "E712"]
+max-line-length = 250

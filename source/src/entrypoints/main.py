@@ -1,15 +1,12 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-import os
 
-from src.api.routers import auth, products, orders
+from src.api.routers import auth, orders, products
 
-app = FastAPI(
-    title="Shoe Shop API",
-    description="API для магазина обуви ООО «Обувь»",
-    version="1.0.0"
-)
+app = FastAPI(title="Shoe Shop API", description="API для магазина обуви ООО «Обувь»", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,13 +23,11 @@ app.include_router(auth.router)
 app.include_router(products.router)
 app.include_router(orders.router)
 
+
 @app.get("/")
 async def root():
-    return {
-        "message": "Shoe Shop API",
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
+    return {"message": "Shoe Shop API", "version": "1.0.0", "docs": "/docs"}
+
 
 @app.get("/health")
 async def health_check():

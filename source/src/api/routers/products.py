@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from sqlalchemy import and_, or_  # <--- Добавлен импорт and_
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_  # <--- Добавлен импорт and_
 
-from src.db.database import get_db
-from src.db.models.models import Product as ProductModel, User
-from src.schemas.product import Product, ProductCreate, ProductUpdate, ProductWithFinalPrice
 from src.api.utils import get_current_user, require_admin
-from src.utils.images import save_product_image, delete_product_image, get_image_path
+from src.db.database import get_db
+from src.db.models.models import Product as ProductModel
+from src.db.models.models import User
+from src.schemas.product import Product, ProductCreate, ProductUpdate, ProductWithFinalPrice
+from src.utils.images import delete_product_image, get_image_path, save_product_image
 
 router = APIRouter(prefix="/api/products", tags=["products"])
 
@@ -20,17 +21,17 @@ def calculate_final_price(product: ProductModel) -> dict:
         **Product.model_validate(product).model_dump(),
         "final_price": round(final_price, 2),
         "out_of_stock": product.quantity == 0,
-        "photo": get_image_path(product.photo)
+        "photo": get_image_path(product.photo),
     }
 
 
 @router.get("", response_model=list[ProductWithFinalPrice])
 async def get_products(
-        search: str | None = None,
-        supplier: str | None = None,
-        sort_by_quantity: str | None = None,  # 'asc' или 'desc'
-        current_user: User | None = Depends(get_current_user),
-        db: Session = Depends(get_db)
+    search: str | None = None,
+    supplier: str | None = None,
+    sort_by_quantity: str | None = None,  # 'asc' или 'desc'
+    current_user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     query = db.query(ProductModel)
 
@@ -52,7 +53,7 @@ async def get_products(
                     ProductModel.supplier.ilike(f"%{term}%"),
                     ProductModel.manufacturer.ilike(f"%{term}%"),
                     ProductModel.category.ilike(f"%{term}%"),
-                    ProductModel.description.ilike(f"%{term}%")
+                    ProductModel.description.ilike(f"%{term}%"),
                 )
                 and_conditions.append(term_filter)
 
@@ -73,19 +74,14 @@ async def get_products(
 
 
 @router.get("/suppliers")
-async def get_suppliers(
-        current_user: User = Depends(require_admin),
-        db: Session = Depends(get_db)
-):
+async def get_suppliers(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
     suppliers = db.query(ProductModel.supplier).distinct().all()
     return ["Все поставщики"] + [s[0] for s in suppliers]
 
 
 @router.get("/{article}", response_model=ProductWithFinalPrice)
 async def get_product(
-        article: str,
-        current_user: User | None = Depends(get_current_user),
-        db: Session = Depends(get_db)
+    article: str, current_user: User | None = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     product = db.query(ProductModel).filter(ProductModel.article == article).first()
     if not product:
@@ -96,9 +92,7 @@ async def get_product(
 
 @router.post("", response_model=Product, status_code=status.HTTP_201_CREATED)
 async def create_product(
-        product: ProductCreate,
-        current_user: User = Depends(require_admin),
-        db: Session = Depends(get_db)
+    product: ProductCreate, current_user: User = Depends(require_admin), db: Session = Depends(get_db)
 ):
     existing = db.query(ProductModel).filter(ProductModel.article == product.article).first()
     if existing:
@@ -114,10 +108,10 @@ async def create_product(
 
 @router.put("/{article}", response_model=Product)
 async def update_product(
-        article: str,
-        product_update: ProductUpdate,
-        current_user: User = Depends(require_admin),
-        db: Session = Depends(get_db)
+    article: str,
+    product_update: ProductUpdate,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
 ):
     db_product = db.query(ProductModel).filter(ProductModel.article == article).first()
     if not db_product:
@@ -135,10 +129,10 @@ async def update_product(
 
 @router.post("/{article}/upload-image")
 async def upload_product_image(
-        article: str,
-        file: UploadFile = File(...),
-        current_user: User = Depends(require_admin),
-        db: Session = Depends(get_db)
+    article: str,
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
 ):
     product = db.query(ProductModel).filter(ProductModel.article == article).first()
     if not product:
@@ -156,11 +150,7 @@ async def upload_product_image(
 
 
 @router.delete("/{article}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_product(
-        article: str,
-        current_user: User = Depends(require_admin),
-        db: Session = Depends(get_db)
-):
+async def delete_product(article: str, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
     from src.db.models.models import order_product
 
     product = db.query(ProductModel).filter(ProductModel.article == article).first()
@@ -169,10 +159,7 @@ async def delete_product(
 
     has_orders = db.query(order_product).filter(order_product.c.product_id == article).first()
     if has_orders:
-        raise HTTPException(
-            status_code=400,
-            detail="Невозможно удалить товар, который присутствует в заказах"
-        )
+        raise HTTPException(status_code=400, detail="Невозможно удалить товар, который присутствует в заказах")
 
     if product.photo:
         delete_product_image(product.photo)

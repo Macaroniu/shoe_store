@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+
 class ProductBase(BaseModel):
     article: str
     name: str
@@ -13,8 +14,10 @@ class ProductBase(BaseModel):
     description: str | None = None
     photo: str | None = None
 
+
 class ProductCreate(ProductBase):
     pass
+
 
 class ProductUpdate(BaseModel):
     name: str | None = None
@@ -28,9 +31,11 @@ class ProductUpdate(BaseModel):
     description: str | None = None
     photo: str | None = None
 
+
 class Product(ProductBase):
     class Config:
         from_attributes = True
+
 
 class ProductWithFinalPrice(Product):
     final_price: float

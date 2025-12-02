@@ -1,11 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
 from datetime import date
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from src.api.utils import require_admin, require_manager_or_admin
 from src.db.database import get_db
-from src.db.models.models import Order as OrderModel, Product as ProductModel, PickupPoint, User, order_product
-from src.schemas.order import Order, OrderCreate, OrderUpdate, PickupPoint as PickupPointSchema
-from src.api.utils import require_manager_or_admin, require_admin
+from src.db.models.models import Order as OrderModel
+from src.db.models.models import PickupPoint
+from src.db.models.models import Product as ProductModel
+from src.db.models.models import User, order_product
+from src.schemas.order import Order, OrderCreate, OrderUpdate
+from src.schemas.order import PickupPoint as PickupPointSchema
 
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
@@ -15,19 +20,13 @@ def generate_order_number(order_date: date, count: int) -> str:
 
 
 @router.get("/pickup-points", response_model=list[PickupPointSchema])
-async def get_pickup_points(
-        current_user: User = Depends(require_manager_or_admin),
-        db: Session = Depends(get_db)
-):
+async def get_pickup_points(current_user: User = Depends(require_manager_or_admin), db: Session = Depends(get_db)):
     points = db.query(PickupPoint).all()
     return points
 
 
 @router.get("", response_model=list[Order])
-async def get_orders(
-        current_user: User = Depends(require_manager_or_admin),
-        db: Session = Depends(get_db)
-):
+async def get_orders(current_user: User = Depends(require_manager_or_admin), db: Session = Depends(get_db)):
     orders = db.query(OrderModel).all()
 
     result = []
@@ -42,9 +41,7 @@ async def get_orders(
 
 @router.get("/{order_id}", response_model=Order)
 async def get_order(
-        order_id: int,
-        current_user: User = Depends(require_manager_or_admin),
-        db: Session = Depends(get_db)
+    order_id: int, current_user: User = Depends(require_manager_or_admin), db: Session = Depends(get_db)
 ):
     order = db.query(OrderModel).filter(OrderModel.id == order_id).first()
     if not order:
@@ -58,11 +55,7 @@ async def get_order(
 
 
 @router.post("", response_model=Order, status_code=status.HTTP_201_CREATED)
-async def create_order(
-        order: OrderCreate,
-        current_user: User = Depends(require_admin),
-        db: Session = Depends(get_db)
-):
+async def create_order(order: OrderCreate, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
     pickup_point = db.query(PickupPoint).filter(PickupPoint.id == order.pickup_point_id).first()
     if not pickup_point:
         raise HTTPException(status_code=404, detail="Пункт выдачи не найден")
@@ -72,9 +65,7 @@ async def create_order(
         if not product:
             raise HTTPException(status_code=404, detail=f"Товар {product_item.product_id} не найден")
 
-    orders_count = db.query(OrderModel).filter(
-        OrderModel.order_date == order.order_date
-    ).count()
+    orders_count = db.query(OrderModel).filter(OrderModel.order_date == order.order_date).count()
     order_number = generate_order_number(order.order_date, orders_count + 1)
 
     db_order = OrderModel(
@@ -84,7 +75,7 @@ async def create_order(
         pickup_point_id=order.pickup_point_id,
         client_full_name=order.client_full_name,
         code=order.code,
-        status=order.status
+        status=order.status,
     )
 
     db.add(db_order)
@@ -92,9 +83,7 @@ async def create_order(
 
     for product_item in order.products:
         stmt = order_product.insert().values(
-            order_id=db_order.id,
-            product_id=product_item.product_id,
-            quantity=product_item.quantity
+            order_id=db_order.id, product_id=product_item.product_id, quantity=product_item.quantity
         )
         db.execute(stmt)
 
@@ -109,10 +98,7 @@ async def create_order(
 
 @router.put("/{order_id}", response_model=Order)
 async def update_order(
-        order_id: int,
-        order_update: OrderUpdate,
-        current_user: User = Depends(require_admin),
-        db: Session = Depends(get_db)
+    order_id: int, order_update: OrderUpdate, current_user: User = Depends(require_admin), db: Session = Depends(get_db)
 ):
     db_order = db.query(OrderModel).filter(OrderModel.id == order_id).first()
     if not db_order:
@@ -132,9 +118,7 @@ async def update_order(
                 raise HTTPException(status_code=404, detail=f"Товар {product_item.product_id} не найден")
 
             stmt = order_product.insert().values(
-                order_id=order_id,
-                product_id=product_item.product_id,
-                quantity=product_item.quantity
+                order_id=order_id, product_id=product_item.product_id, quantity=product_item.quantity
             )
             db.execute(stmt)
 
@@ -149,11 +133,7 @@ async def update_order(
 
 
 @router.delete("/{order_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_order(
-        order_id: int,
-        current_user: User = Depends(require_admin),
-        db: Session = Depends(get_db)
-):
+async def delete_order(order_id: int, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
     order = db.query(OrderModel).filter(OrderModel.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Заказ не найден")

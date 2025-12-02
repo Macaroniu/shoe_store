@@ -1,12 +1,12 @@
-import sys
 import os
-from datetime import datetime
+import sys
+
 from sqlalchemy.orm import Session
 
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
-from src.db.database import engine, SessionLocal
-from src.db.models.models import Base, User, Product, Order, PickupPoint, order_product
+from src.db.database import SessionLocal, engine
+from src.db.models.models import Base, PickupPoint, Product, User
 from src.utils.security import get_password_hash
 
 
@@ -22,8 +22,12 @@ def load_users(db: Session):
     users_data = [
         {"role": "Администратор", "full_name": "Администратор", "login": "admin", "password": "admin"},
         {"role": "Менеджер", "full_name": "Борсин Пётр Евгеньевич", "login": "manager", "password": "manager"},
-        {"role": "авторизованный клиент", "full_name": "Михайлюк Анна Вячеславовна", "login": "client",
-         "password": "client"},
+        {
+            "role": "авторизованный клиент",
+            "full_name": "Михайлюк Анна Вячеславовна",
+            "login": "client",
+            "password": "client",
+        },
     ]
 
     for user_data in users_data:
@@ -33,7 +37,7 @@ def load_users(db: Session):
                 role=user_data["role"],
                 full_name=user_data["full_name"],
                 login=user_data["login"],
-                password=get_password_hash(user_data["password"])
+                password=get_password_hash(user_data["password"]),
             )
             db.add(user)
 
@@ -63,28 +67,9 @@ def load_pickup_points(db: Session):
 
 
 def load_products(db: Session):
-    """
-    Загрузка примеров товаров
-    ВАЖНО: Добавьте здесь товары, если хотите чтобы они были в БД
-    """
     print("Загрузка товаров...")
 
-    # Пример товаров - раскомментируйте и дополните при необходимости
-    products_data = [
-        # {
-        #     "article": "A11214",
-        #     "name": "Кроссовки Nike Air Max",
-        #     "unit": "шт.",
-        #     "price": 5999.00,
-        #     "supplier": "ООО Поставка",
-        #     "manufacturer": "Nike",
-        #     "category": "Женская обувь",
-        #     "discount": 10,
-        #     "quantity": 15,
-        #     "description": "Женские кроссовки Nike Air Max для активного отдыха"
-        # },
-        # Добавьте другие товары здесь...
-    ]
+    products_data = []
 
     count = 0
     for product_data in products_data:
@@ -109,16 +94,11 @@ def init_database():
         load_users(db)
         load_products(db)
 
-        # ЗАКАЗЫ НЕ СОЗДАЕМ - они будут импортированы из Excel
-        # через import_data.py
-
         print("База данных успешно инициализирована!")
         print("\nТестовые учетные записи:")
         print("  Администратор: login=admin, password=admin")
         print("  Менеджер: login=manager, password=manager")
         print("  Клиент: login=client, password=client")
-        print("\n⚠️  ВАЖНО: Для импорта данных из Excel запустите:")
-        print("  python3 import_data.py")
 
     except Exception as e:
         print(f"Ошибка при инициализации: {e}")

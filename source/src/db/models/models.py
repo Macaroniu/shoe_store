@@ -1,13 +1,14 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, Date, Table
+from sqlalchemy import Column, Date, Float, ForeignKey, Integer, String, Table
 from sqlalchemy.orm import relationship
+
 from src.db.database import Base
 
 order_product = Table(
-    'order_product',
+    "order_product",
     Base.metadata,
-    Column('order_id', Integer, ForeignKey('orders.id', ondelete='CASCADE')),
-    Column('product_id', String, ForeignKey('products.article', ondelete='CASCADE')),
-    Column('quantity', Integer, nullable=False, default=1)
+    Column("order_id", Integer, ForeignKey("orders.id", ondelete="CASCADE")),
+    Column("product_id", String, ForeignKey("products.article", ondelete="CASCADE")),
+    Column("quantity", Integer, nullable=False, default=1),
 )
 
 
@@ -55,7 +56,7 @@ class Order(Base):
     order_number = Column(String, unique=True, nullable=False, index=True)
     order_date = Column(Date, nullable=False)
     delivery_date = Column(Date, nullable=False)
-    pickup_point_id = Column(Integer, ForeignKey('pickup_points.id'))
+    pickup_point_id = Column(Integer, ForeignKey("pickup_points.id"))
     client_full_name = Column(String, nullable=False)
     code = Column(Integer, nullable=False)
     status = Column(String, nullable=False)

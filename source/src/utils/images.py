@@ -1,7 +1,8 @@
-from PIL import Image
 import os
 import shutil
+
 from fastapi import UploadFile
+from PIL import Image
 
 STATIC_DIR = "static/images"
 MAX_IMAGE_SIZE = (300, 200)
@@ -10,7 +11,7 @@ os.makedirs(STATIC_DIR, exist_ok=True)
 
 
 async def save_product_image(file: UploadFile, article: str) -> str:
-    file_extension = file.filename.split('.')[-1]
+    file_extension = file.filename.split(".")[-1]
     filename = f"{article}.{file_extension}"
     file_path = os.path.join(STATIC_DIR, filename)
 
@@ -20,15 +21,15 @@ async def save_product_image(file: UploadFile, article: str) -> str:
 
     try:
         with Image.open(temp_path) as img:
-            if img.mode in ('RGBA', 'LA', 'P'):
-                background = Image.new('RGB', img.size, (255, 255, 255))
-                if img.mode == 'P':
-                    img = img.convert('RGBA')
-                background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+            if img.mode in ("RGBA", "LA", "P"):
+                background = Image.new("RGB", img.size, (255, 255, 255))
+                if img.mode == "P":
+                    img = img.convert("RGBA")
+                background.paste(img, mask=img.split()[-1] if img.mode == "RGBA" else None)
                 img = background
 
             img.thumbnail(MAX_IMAGE_SIZE, Image.Resampling.LANCZOS)
-            img.save(file_path, 'JPEG', quality=85)
+            img.save(file_path, "JPEG", quality=85)
 
         os.remove(temp_path)
         return filename

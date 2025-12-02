@@ -1,9 +1,12 @@
-from pydantic import BaseModel
 from datetime import date
+
+from pydantic import BaseModel
+
 
 class OrderProductBase(BaseModel):
     product_id: str
     quantity: int
+
 
 class OrderBase(BaseModel):
     order_number: str
@@ -14,6 +17,7 @@ class OrderBase(BaseModel):
     code: int
     status: str
 
+
 class OrderCreate(BaseModel):
     order_date: date
     delivery_date: date
@@ -22,6 +26,7 @@ class OrderCreate(BaseModel):
     code: int
     status: str
     products: list[OrderProductBase]
+
 
 class OrderUpdate(BaseModel):
     order_date: date | None = None
@@ -32,6 +37,7 @@ class OrderUpdate(BaseModel):
     status: str | None = None
     products: list[OrderProductBase] | None = None
 
+
 class Order(OrderBase):
     id: int
     pickup_address: str | None = None
@@ -39,8 +45,10 @@ class Order(OrderBase):
     class Config:
         from_attributes = True
 
+
 class PickupPointBase(BaseModel):
     address: str
+
 
 class PickupPoint(PickupPointBase):
     id: int
