@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # База данных PostgreSQL
   db:
     image: postgres:15-alpine
     container_name: shoe_shop_db
@@ -10,7 +9,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: shoe_shop
     ports:
-      - "5433:5432"  # Внешний порт 5433 для совместимости
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -21,7 +20,6 @@ services:
     networks:
       - shoe_shop_network
 
-  # FastAPI Backend
   api:
     build:
       context: .
@@ -57,23 +55,3 @@ volumes:
 networks:
   shoe_shop_network:
     driver: bridge
-
-# ИНСТРУКЦИЯ ПО ИСПОЛЬЗОВАНИЮ:
-#
-# 1. Запуск всех сервисов:
-#    docker-compose up -d
-#
-# 2. Просмотр логов:
-#    docker-compose logs -f api
-#
-# 3. Остановка:
-#    docker-compose down
-#
-# 4. Очистка данных:
-#    docker-compose down -v
-#
-# 5. После запуска Docker, запустите desktop приложение:
-#    python shoe_shop_desktop.py
-#
-# API будет доступен на: http://localhost:8000
-# Документация: http://localhost:8000/docs
